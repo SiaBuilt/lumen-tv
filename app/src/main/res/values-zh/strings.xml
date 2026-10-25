@@ -88,7 +88,7 @@
     <string name="wp_weather_city">位置</string>
     <string name="st_home_standard">双排</string>
     <string name="st_home_one_row">单排</string>
-    <string name="st_home_layout_hint">单排：只显示第一排，放在屏幕下方，露出更多壁纸，比如家庭合照。双排：上方显示大时钟，下面露出第二排。按下键看其余 App。</string>
+    <string name="st_home_layout_hint">按行显示可选一排、两排或三排；横向滚动显示已安装的应用，其余应用从全部应用进入。</string>
     <string name="st_sounds">按键声音</string>
     <string name="st_sounds_hint">移动焦点、确认、返回时发出轻微的声音，像 Apple TV 一样。</string>
     <string name="st_on">开</string>
@@ -129,4 +129,22 @@
     <string name="cc_update_failed">下载失败，点此重试</string>
     <string name="cc_city">天气城市</string>
     <string name="cc_city_auto">自动定位</string>
+    <string name="lumen_rows">首屏显示行数</string>
+    <string name="lumen_layout_rows">按行显示</string>
+    <string name="lumen_layout_scrolling">横向滚动</string>
+    <string name="lumen_app_bar_transparency">应用栏背景透明度</string>
+    <string name="lumen_transparency_percent">%1$d%%</string>
+    <string name="lumen_app_bar_transparency_hint" formatted="false">0% 保留原有玻璃，100% 背景完全透明。</string>
+    <string name="st_home_three_rows">三排</string>
+    <string name="lumen_name_size">应用名字号</string>
+    <string name="lumen_name_mode">应用名显示</string>
+    <string name="lumen_names_always">始终显示</string>
+    <string name="lumen_names_focused">仅选中时显示</string>
+    <string name="lumen_names_hidden">不显示</string>
+    <string name="lumen_app_order">应用排序</string>
+    <string name="lumen_order_edit">调整</string>
+    <string name="lumen_manage_hint">隐藏的应用可恢复到原排序；通过应用排序，可将任意可见应用移到首屏。</string>
+    <string name="lumen_order_hint">选中应用按确定进入移动，上下键调整位置。保存后生效，返回放弃调整。</string>
+    <string name="lumen_order_moving">上下键移动当前应用，确定键完成移动，返回键停止移动。</string>
+    <string name="lumen_order_save">保存排序</string>
 </resources>

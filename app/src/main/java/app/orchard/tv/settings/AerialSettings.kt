@@ -24,6 +24,13 @@ enum class FocusStyle(val key: String) {
     }
 }
 
+enum class AppNameMode(val key: String) {
+    Always("always"), Focused("focused"), Hidden("hidden");
+    companion object {
+        fun of(key: String?) = entries.firstOrNull { it.key == key } ?: Always
+    }
+}
+
 /** Aerial's own preferences. Compose state, written on the main thread only. */
 object AerialSettings {
     private const val PREFS = "settings"
@@ -45,7 +52,17 @@ object AerialSettings {
      * Only the top row on Home, low on the screen, so the wallpaper (a family photo) shows above it,
      * as tvOS does under a full-screen top shelf. The rest of the grid is one press down.
      */
-    var oneRowHome by mutableStateOf(true); private set
+    var homeRows by mutableStateOf(2); private set
+    /** Opt-in upstream dock; existing row counts and app order remain unchanged. */
+    var scrollingHome by mutableStateOf(false); private set
+    val oneRowHome: Boolean get() = scrollingHome || homeRows == 1
+    var appNameSize by mutableStateOf(14); private set
+    var appNameMode by mutableStateOf(AppNameMode.Always); private set
+    val appNameSizes = listOf(12, 14, 16, 18)
+
+    /** Only the glass behind the apps fades; tile artwork and labels stay opaque. */
+    var appBarTransparency by mutableStateOf(0); private set
+    val appBarTransparencies = (0..100 step 10).toList()
 
     /** Interface sounds (system/Sounds), as tvOS plays them on every press. */
     var uiSounds by mutableStateOf(true); private set
@@ -84,7 +101,12 @@ object AerialSettings {
         bootSource = prefs.getString("boot_source", null)
         pinHash = prefs.getString("pin_hash", null)
         pinSet = pinHash != null
-        oneRowHome = prefs.getBoolean("one_row_home", true)
+        homeRows = prefs.getInt("home_rows", 2).coerceIn(1, 3)
+        scrollingHome = prefs.getBoolean("scrolling_home", false)
+        appNameSize = prefs.getInt("app_name_size", 14).takeIf { it in appNameSizes } ?: 14
+        appNameMode = AppNameMode.of(prefs.getString("app_name_mode", null))
+        appBarTransparency = prefs.getInt("app_bar_transparency", 0)
+            .takeIf { it in appBarTransparencies } ?: 0
         clockRight = prefs.getBoolean("clock_right", false)
         uiSounds = prefs.getBoolean("ui_sounds", true)
         backStartsScreensaver = prefs.getBoolean("back_starts_screensaver", true)
@@ -118,8 +140,38 @@ object AerialSettings {
         MessageDigest.getInstance("SHA-256").digest("aerial:$pin".toByteArray()).joinToString("") { "%02x".format(it) }
 
     fun chooseOneRowHome(on: Boolean) {
-        oneRowHome = on
-        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("one_row_home", on) }
+        chooseScrollingHome(false)
+        if (on) chooseHomeRows(1) else if (homeRows == 1) chooseHomeRows(2)
+    }
+
+    fun chooseHomeRows(rows: Int) {
+        homeRows = rows.coerceIn(1, 3)
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
+            putInt("home_rows", homeRows)
+            putBoolean("one_row_home", homeRows == 1)
+        }
+    }
+
+    fun chooseScrollingHome(on: Boolean) {
+        scrollingHome = on
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putBoolean("scrolling_home", on) }
+    }
+
+    fun chooseAppNameSize(size: Int) {
+        appNameSize = size.takeIf { it in appNameSizes } ?: 14
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putInt("app_name_size", appNameSize) }
+    }
+
+    fun chooseAppNameMode(mode: AppNameMode) {
+        appNameMode = mode
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putString("app_name_mode", mode.key) }
+    }
+
+    fun chooseAppBarTransparency(percent: Int) {
+        appBarTransparency = percent.takeIf { it in appBarTransparencies } ?: 0
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit {
+            putInt("app_bar_transparency", appBarTransparency)
+        }
     }
 
     fun chooseUiSounds(on: Boolean) {

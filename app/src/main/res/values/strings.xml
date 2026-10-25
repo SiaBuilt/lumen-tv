@@ -89,7 +89,7 @@
     <string name="wp_weather_city">Location</string>
     <string name="st_home_standard">Two Rows</string>
     <string name="st_home_one_row">One Row</string>
-    <string name="st_home_layout_hint">One Row puts only the top row on screen, low down, so more of the wallpaper shows, a family photo say. Two Rows adds the big clock above and the second row below. Press down for the rest.</string>
+    <string name="st_home_layout_hint">Keep one, two or three rows, or scroll through installed apps horizontally. Other apps remain under All Apps.</string>
     <string name="st_sounds">Sounds</string>
     <string name="st_sounds_hint">A soft click as focus moves, and on select and Back, as on Apple TV.</string>
     <string name="st_on">On</string>
@@ -130,4 +130,22 @@
     <string name="cc_update_failed">Download failed. Try again</string>
     <string name="cc_city">Weather city</string>
     <string name="cc_city_auto">Automatic</string>
+    <string name="lumen_rows">Home Rows</string>
+    <string name="lumen_layout_rows">Fixed Rows</string>
+    <string name="lumen_layout_scrolling">Horizontal Scroll</string>
+    <string name="lumen_app_bar_transparency">App Bar Background Transparency</string>
+    <string name="lumen_transparency_percent">%1$d%%</string>
+    <string name="lumen_app_bar_transparency_hint" formatted="false">0% keeps the original glass; 100% makes the background fully transparent.</string>
+    <string name="st_home_three_rows">Three Rows</string>
+    <string name="lumen_name_size">App Name Size</string>
+    <string name="lumen_name_mode">App Names</string>
+    <string name="lumen_names_always">Always</string>
+    <string name="lumen_names_focused">Focused Only</string>
+    <string name="lumen_names_hidden">Hidden</string>
+    <string name="lumen_app_order">App Order</string>
+    <string name="lumen_order_edit">Arrange</string>
+    <string name="lumen_manage_hint">Restore hidden apps to their original places. Use App Order to bring any visible app to Home.</string>
+    <string name="lumen_order_hint">Select an app and press OK to move it. Save applies the order; Back discards changes.</string>
+    <string name="lumen_order_moving">Up / Down moves this app. OK finishes moving; Back stops moving.</string>
+    <string name="lumen_order_save">Save Order</string>
 </resources>

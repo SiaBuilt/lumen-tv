@@ -32,6 +32,15 @@ class LayoutStore(context: Context) {
     fun hide(key: String) { hidden = hidden + key; save() }
     fun unhide(key: String) { hidden = hidden - key; save() }
 
+    /** Reorder visible apps while retaining hidden and temporarily missing entries in place. */
+    fun reorderVisible(keys: List<String>) {
+        val ranked = keys.distinct().filter { it in order && it !in hidden }
+        val included = ranked.toHashSet()
+        val next = ranked.iterator()
+        order = order.map { if (it in included) next.next() else it }
+        save()
+    }
+
     /**
      * Moves [key] onto the slot of [target] among the visible tiles, shifting the ones in between,
      * the way tvOS reflows its grid while an app is being moved.

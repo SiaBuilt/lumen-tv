@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,7 +46,10 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlurEffect
 import androidx.compose.ui.graphics.Brush
@@ -71,6 +76,9 @@ import app.orchard.tv.apps.ALL_APPS_KEY
 import app.orchard.tv.apps.AppEntry
 import app.orchard.tv.ui.control.ControlCenter
 import app.orchard.tv.ui.wallpaper.WallpaperSheet
+import app.orchard.tv.HOME_COLUMNS
+import app.orchard.tv.settings.AppNameMode
+import app.orchard.tv.ui.control.AppOrderPanel
 import app.orchard.tv.wallpaper.Wallpapers
 import app.orchard.tv.ui.components.liquidGlass
 import app.orchard.tv.ui.theme.LocalReducedMotion
@@ -80,22 +88,23 @@ import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
-private const val COLUMNS = 6
+private const val COLUMNS = HOME_COLUMNS
 
 /** Grid geometry for the screen at hand. On a 1080p TV this is a 960×540 dp canvas. */
-private class GridMetrics(screenW: Dp, screenH: Dp, oneRow: Boolean) {
+private class GridMetrics(screenW: Dp, screenH: Dp, private val homeRows: Int, nameHeight: Dp, namesShown: Boolean, private val scrolling: Boolean) {
     val margin = 56.dp
     val gap = 22.dp
     val tileW = (screenW - margin * 2 - gap * (COLUMNS - 1)) / COLUMNS
     val tileH = tileW * 9f / 16f
     val pitchX = tileW + gap
-    val pitchY = tileH + 50.dp
+    val labelSpace = if (namesShown) AppLabelGap + nameHeight else 0.dp
+    val pitchY = tileH + if (namesShown) labelSpace + 10.dp else 32.dp
 
     /**
      * The top row sits a little past the middle, under the shelf, as on tvOS. In one-row mode it
      * sits low, with only the top of the second row showing under the focused app's name.
      */
-    val topRowY = if (oneRow) screenH - pitchY - 12.dp else screenH * 0.555f
+    val topRowY = screenH - 40.dp - labelSpace - tileH - pitchY * (homeRows - 1)
 
     /** Top of the shelf clock, in the standard layout. */
     val clockY = screenH * 0.555f - 196.dp
@@ -104,11 +113,11 @@ private class GridMetrics(screenW: Dp, screenH: Dp, oneRow: Boolean) {
     val restY = screenH * 0.37f
     val screenH = screenH
 
-    /** Lumen's dock is one row, as long as it needs; past [COLUMNS] it scrolls sideways. */
-    fun slot(index: Int) = Pair(margin + pitchX * index, topRowY)
+    fun slot(index: Int) = if (scrolling) Pair(margin + pitchX * index, topRowY)
+        else Pair(margin + pitchX * (index % COLUMNS), topRowY + pitchY * (index / COLUMNS))
 
     fun scrollFor(row: Int, rows: Int): Dp {
-        if (row <= 0) return 0.dp
+        if (row < homeRows) return 0.dp
         val wanted = topRowY + pitchY * row - restY
         val bottom = topRowY + pitchY * rows + 36.dp - screenH
         return minOf(wanted, maxOf(bottom, topRowY + pitchY - restY))
@@ -125,7 +134,8 @@ fun HomeScreen(
     onStartScreensaver: () -> Unit,
     onResume: (app.orchard.tv.history.HistoryItem) -> Unit,
 ) {
-    // Lumen: Home shows the dock (five apps and All Apps); the rest live behind All Apps.
+    // Preserve the configured rows; the upstream scrolling dock is an optional layout.
+    val scrollingHome = AerialSettings.scrollingHome
     val apps = vm.dock
     val history = vm.history
     val hero = history.getOrNull(vm.heroIndex.coerceIn(0, (history.size - 1).coerceAtLeast(0)))
@@ -146,7 +156,7 @@ fun HomeScreen(
     var pillFocused by remember { mutableStateOf(false) }
     var lastFocusedIndex by remember { mutableStateOf(0) }
     val focusedIndex = apps.indexOfFirst { it.key == focusedKey }
-    val focusedRow = 0
+    val focusedRow = if (scrollingHome || pillFocused || focusedIndex < 0) 0 else focusedIndex / COLUMNS
     val gridEnabled = overlay == Overlay.None
 
     // Grid scroll offset (px). The remote sets it from the focused row; a finger drags it freely
@@ -253,7 +263,8 @@ fun HomeScreen(
                     when (code) {
                         NativeKeyEvent.KEYCODE_DPAD_LEFT -> vm.moveBy(-1)
                         NativeKeyEvent.KEYCODE_DPAD_RIGHT -> vm.moveBy(1)
-                        NativeKeyEvent.KEYCODE_DPAD_UP, NativeKeyEvent.KEYCODE_DPAD_DOWN -> Unit
+                        NativeKeyEvent.KEYCODE_DPAD_UP -> if (!scrollingHome) vm.moveBy(-COLUMNS)
+                        NativeKeyEvent.KEYCODE_DPAD_DOWN -> if (!scrollingHome) vm.moveBy(COLUMNS)
                         NativeKeyEvent.KEYCODE_BACK, NativeKeyEvent.KEYCODE_DPAD_CENTER,
                         NativeKeyEvent.KEYCODE_ENTER, NativeKeyEvent.KEYCODE_NUMPAD_ENTER -> vm.endMove()
                         else -> return@onPreviewKeyEvent false
@@ -278,16 +289,20 @@ fun HomeScreen(
                 }
             },
     ) {
-        val metrics = remember(maxWidth, maxHeight) {
-            GridMetrics(maxWidth, maxHeight, true)
+        val rows = if (scrollingHome) 1 else (apps.size + COLUMNS - 1) / COLUMNS
+        val nameHeight = appLabelHeight
+        val namesShown = AerialSettings.appNameMode != AppNameMode.Hidden
+        val metrics = remember(maxWidth, maxHeight, rows, nameHeight, namesShown, scrollingHome) {
+            GridMetrics(maxWidth, maxHeight, rows.coerceAtLeast(1), nameHeight, namesShown, scrollingHome)
         }
-        val rows = 1
-        // The dock slides left once focus passes its sixth place, keeping the focused app in view.
+        val dockStartIndex = if (scrollingHome) {
+            ((if (focusedIndex >= 0) focusedIndex else lastFocusedIndex.coerceIn(0, apps.lastIndex)) - (COLUMNS - 1)).coerceAtLeast(0)
+        } else 0
         val dockShift by animateDpAsState(
-            metrics.pitchX * ((if (focusedIndex >= 0) focusedIndex else lastFocusedIndex) - (COLUMNS - 1)).coerceAtLeast(0),
-            spring(dampingRatio = 1f, stiffness = 300f), label = "dock-shift",
+            metrics.pitchX * dockStartIndex,
+            if (reduced) tween(0) else spring(dampingRatio = 1f, stiffness = 300f), label = "dock-shift",
         )
-        val collapsePx = with(density) { (metrics.topRowY - metrics.restY).toPx() }
+        val collapsePx = with(density) { (metrics.topRowY - metrics.restY).coerceAtLeast(1.dp).toPx() }
 
         val target = with(density) { metrics.scrollFor(focusedRow, rows).toPx() }
         val maxScroll = with(density) { metrics.scrollFor(rows - 1, rows).toPx() }.coerceAtLeast(0f)
@@ -337,7 +352,7 @@ fun HomeScreen(
                     (metrics.margin - PlatePadH).toPx(),
                     (metrics.topRowY - PlatePadV).toPx(),
                     (metrics.margin + metrics.pitchX * (topCount - 1) + metrics.tileW + PlatePadH).toPx(),
-                    (metrics.topRowY + metrics.tileH + PlatePadV).toPx(),
+                    (metrics.topRowY + metrics.pitchY * (rows - 1) + metrics.tileH + metrics.labelSpace + PlatePadV).toPx(),
                 )
             }
             val cover = heroCover(hero)
@@ -356,6 +371,7 @@ fun HomeScreen(
                 plate = plate,
                 scroll = { scroll.value },
                 collapse = collapsePx,
+                plateOpacity = 1f - AerialSettings.appBarTransparency / 100f,
             )
             }
 
@@ -384,49 +400,76 @@ fun HomeScreen(
                     )
                 }
 
-                apps.forEachIndexed { index, app ->
-                    key(app.key) {
-                        val (x, y) = metrics.slot(index)
-                        val slotPx = with(density) { IntOffset((x - dockShift).roundToPx(), y.roundToPx()) }
-                        val slot = animateIntOffsetAsState(
-                            slotPx,
-                            spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow),
-                            label = "slot",
-                        )
-                        AppTile(
-                            app = app,
-                            width = metrics.tileW,
-                            height = metrics.tileH,
-                            focusRequester = requester(app.key),
-                            enabled = gridEnabled,
-                            moving = moving == app.key,
-                            appearDelayMs = (index * 28).coerceAtMost(320),
-                            // The dock sits on the glass.
-                            onGlass = { (1f - scroll.value / collapsePx * 2f).coerceIn(0f, 1f) },
-                            onFocused = {
-                                heroFocused = false
-                                focusedKey = app.key
-                                lastFocusedIndex = index
-                                pillFocused = false
-                            },
-                            onClick = { bounds ->
-                                val mover = moving
-                                if (mover == null) {
-                                    if (app.key == ALL_APPS_KEY) vm.overlay = Overlay.AllApps else onLaunch(app, bounds)
-                                }
-                                // While moving, tapping a tile puts the app there; tapping the app
-                                // itself is done.
-                                else if (mover == app.key) vm.endMove()
-                                else {
-                                    vm.moveBy(index - apps.indexOfFirst { it.key == mover })
-                                    runCatching { requester(mover).requestFocus() }
-                                }
-                            },
-                            onLongPress = { bounds ->
-                                if (moving == null && app.key != ALL_APPS_KEY) vm.overlay = Overlay.AppMenu(app.key, bounds ?: Rect.Zero)
-                            },
-                            modifier = Modifier.offset { slot.value },
-                        )
+                // The scrolling dock shares the glass plate's bounds, including its rounded corners.
+                // Draw only six apps, but keep all tiles composed so directional focus can advance.
+                val viewport = plate.takeIf { scrollingHome }
+                Box(
+                    if (viewport == null) Modifier.fillMaxSize() else with(density) {
+                        Modifier
+                            .offset { IntOffset(viewport.left.roundToInt(), viewport.top.roundToInt()) }
+                            .size(viewport.width.toDp(), viewport.height.toDp())
+                            .clip(RoundedCornerShape(PlateCorner))
+                    },
+                ) {
+                    apps.forEachIndexed { index, app ->
+                        key(app.key) {
+                            val (x, y) = metrics.slot(index)
+                            val slotPx = with(density) {
+                                IntOffset(
+                                    x.roundToPx() - (viewport?.left?.roundToInt() ?: 0),
+                                    y.roundToPx() - (viewport?.top?.roundToInt() ?: 0),
+                                )
+                            }
+                            val slot = animateIntOffsetAsState(
+                                slotPx,
+                                spring(dampingRatio = 0.86f, stiffness = Spring.StiffnessMediumLow),
+                                label = "slot",
+                            )
+                            AppTile(
+                                app = app,
+                                width = metrics.tileW,
+                                height = metrics.tileH,
+                                focusRequester = requester(app.key),
+                                enabled = gridEnabled,
+                                moving = moving == app.key,
+                                appearDelayMs = (index * 28).coerceAtMost(320),
+                                onFocused = {
+                                    heroFocused = false
+                                    focusedKey = app.key
+                                    lastFocusedIndex = index
+                                    pillFocused = false
+                                },
+                                onClick = { bounds ->
+                                    val mover = moving
+                                    if (mover == null) {
+                                        if (app.key == ALL_APPS_KEY) vm.overlay = Overlay.AllApps else onLaunch(app, bounds)
+                                    }
+                                    // While moving, tapping a tile puts the app there; tapping the app
+                                    // itself is done.
+                                    else if (mover == app.key) vm.endMove()
+                                    else {
+                                        vm.moveBy(index - apps.indexOfFirst { it.key == mover })
+                                        runCatching { requester(mover).requestFocus() }
+                                    }
+                                },
+                                onLongPress = { bounds ->
+                                    if (moving == null && app.key != ALL_APPS_KEY) vm.overlay = Overlay.AppMenu(app.key, bounds ?: Rect.Zero)
+                                },
+                                modifier = Modifier
+                                    .offset { IntOffset(slot.value.x - dockShift.roundToPx(), slot.value.y) }
+                                    .drawWithContent {
+                                        if (!scrollingHome || index in dockStartIndex until dockStartIndex + COLUMNS) drawContent()
+                                    }
+                                    .focusProperties {
+                                        // Follow app order across rows; wrap at either end of Home.
+                                        left = requester(apps[(index + apps.lastIndex) % apps.size].key)
+                                        right = requester(apps[(index + 1) % apps.size].key)
+                                        up = if (!scrollingHome && index >= COLUMNS) requester(apps[index - COLUMNS].key)
+                                            else if (hero != null) heroRequester else pillRequester
+                                        down = if (scrollingHome) FocusRequester.Cancel else apps.getOrNull(index + COLUMNS)?.let { requester(it.key) } ?: FocusRequester.Cancel
+                                    },
+                            )
+                        }
                     }
                 }
             }
@@ -458,6 +501,13 @@ fun HomeScreen(
                 showTime = false,
                 enabled = gridEnabled && moving == null,
                 focusRequester = pillRequester,
+                modifier = Modifier.focusProperties {
+                    left = FocusRequester.Cancel
+                    right = FocusRequester.Cancel
+                    up = FocusRequester.Cancel
+                    down = if (hero != null) heroRequester else apps.getOrNull(if (scrollingHome) lastFocusedIndex else lastFocusedIndex % COLUMNS)
+                        ?.let { requester(it.key) } ?: FocusRequester.Cancel
+                },
                 onFocused = { gained ->
                     // The window hands its first focus to the top-most control; Home starts below it.
                     if (gained) {
@@ -482,8 +532,9 @@ fun HomeScreen(
         TimeWeatherChip(
             now = now,
             modifier = Modifier
-                .padding(start = metrics.margin - 14.dp, top = 28.dp)
-                .graphicsLayer { alpha = if (overlay is Overlay.ControlCenter) 0f else 1f },
+                .align(if (AerialSettings.clockRight) Alignment.TopEnd else Alignment.TopStart)
+                .padding(start = if (AerialSettings.clockRight) 0.dp else metrics.margin - 14.dp,
+                    end = if (AerialSettings.clockRight) 170.dp else 0.dp, top = 28.dp),
         )
 
         AllAppsSheet(
@@ -527,7 +578,7 @@ fun HomeScreen(
         AppMenu(
             app = menu?.let { m -> apps.firstOrNull { it.key == m.key } },
             anchor = menu?.anchor,
-            onMove = { vm.startMove(it) },
+            onMove = { vm.overlay = Overlay.AppOrder(it) },
             onHide = { key ->
                 vm.overlay = Overlay.None
                 vm.hide(key)
@@ -545,6 +596,14 @@ fun HomeScreen(
             onDismiss = { vm.overlay = Overlay.None },
         )
 
+        AppOrderPanel(
+            visible = overlay is Overlay.AppOrder,
+            apps = vm.apps,
+            initialKey = (overlay as? Overlay.AppOrder)?.initialKey,
+            onSave = { vm.applyAppOrder(it); vm.overlay = Overlay.Wallpaper },
+            onDismiss = { vm.overlay = Overlay.Wallpaper },
+        )
+
         HiddenAppsSheet(
             visible = overlay is Overlay.HiddenApps,
             apps = vm.hiddenApps,
@@ -560,6 +619,7 @@ fun HomeScreen(
             visible = overlay is Overlay.Wallpaper,
             onDismiss = { vm.overlay = Overlay.ControlCenter() },
             hiddenCount = vm.hiddenApps.size,
+            onOrder = { vm.overlay = Overlay.AppOrder() },
             onHiddenApps = { vm.whenUnlocked { vm.overlay = Overlay.HiddenApps } },
             onStartScreensaver = {
                 vm.overlay = Overlay.None

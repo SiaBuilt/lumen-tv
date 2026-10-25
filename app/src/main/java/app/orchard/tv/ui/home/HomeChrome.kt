@@ -14,7 +14,9 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,6 +26,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicText
 import androidx.compose.runtime.Composable
@@ -41,7 +44,12 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Canvas as BitmapCanvas
+import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.orchard.tv.system.NetKind
@@ -50,6 +58,7 @@ import app.orchard.tv.ui.components.Pressable
 import app.orchard.tv.ui.components.drawGlassEdge
 import app.orchard.tv.ui.theme.Glyph
 import app.orchard.tv.ui.theme.GlyphIcon
+import app.orchard.tv.ui.theme.drawGlyph
 import app.orchard.tv.ui.theme.Motion
 import app.orchard.tv.ui.theme.Palette
 import app.orchard.tv.ui.theme.Type
@@ -102,7 +111,7 @@ fun dateText(now: LocalDateTime): String {
  * full-screen fill (Xiaomi MiTV-MFTR0: 90th percentile 20 -> 30 ms when the crossfade ran end to end).
  */
 @Composable
-fun HomeBackground(backdrop: ImageBitmap?, frosted: ImageBitmap?, plate: Rect?, scroll: () -> Float, collapse: Float) {
+fun HomeBackground(backdrop: ImageBitmap?, frosted: ImageBitmap?, plate: Rect?, scroll: () -> Float, collapse: Float, plateOpacity: Float = 1f) {
     Crossfade(
         targetState = backdrop to frosted,
         animationSpec = tween(450, easing = Motion.EaseOut),
@@ -134,7 +143,8 @@ fun HomeBackground(backdrop: ImageBitmap?, frosted: ImageBitmap?, plate: Rect?, 
             // back the same way when focus returns to the top row. Kept small on purpose: the
             // whole screen shrinking back into the plate read as too much.
             val fade = 1f - smooth((p / 0.55f).coerceIn(0f, 1f))
-            if (plate == null || fade < 0.01f) return@Canvas
+            val strength = fade * plateOpacity.coerceIn(0f, 1f)
+            if (plate == null || strength < 0.01f) return@Canvas
             val radius = PlateCorner.toPx()
             val grow = PlateSwell.toPx() * (1f - fade)
             val r = plate.translate(0f, -scroll()).inflate(grow)
@@ -148,10 +158,10 @@ fun HomeBackground(backdrop: ImageBitmap?, frosted: ImageBitmap?, plate: Rect?, 
                 topLeft = r.topLeft,
                 size = r.size,
                 cornerRadius = CornerRadius(radius + grow),
-                alpha = fade,
+                alpha = strength,
                 colorFilter = PlateTint,
             )
-            drawGlassEdge(r.topLeft, r.size, radius + grow, fade)
+            drawGlassEdge(r.topLeft, r.size, radius + grow, strength)
         }
     }
 }
@@ -161,7 +171,7 @@ private fun smooth(x: Float) = x * x * (3f - 2f * x)
 /** The Liquid Glass plate under the top row: how far it reaches past the tiles, and its corners. */
 val PlatePadH = 26.dp
 val PlatePadV = 20.dp
-private val PlateCorner = 32.dp
+internal val PlateCorner = 32.dp
 
 /** The grid's background: the frosted picture under this much black. */
 private const val GRID_SHADE = 0.55f
@@ -256,7 +266,7 @@ fun StatusPill(
     ) { state ->
         LaunchedEffect(state.focused) { onFocused(state.focused) }
         val bg by animateColorAsState(
-            if (state.focused) Palette.Focus else Color.Transparent,
+            if (state.focused) Palette.Focus else Color.White.copy(alpha = 0.12f),
             tween(160, easing = Motion.EaseOut), label = "pill-bg",
         )
         val fg = if (state.focused) Palette.OnFocus else Color.White.copy(alpha = 0.9f)
@@ -264,8 +274,9 @@ fun StatusPill(
             Modifier
                 .clip(RoundedCornerShape(50))
                 .background(bg)
-                .height(34.dp)
-                .padding(horizontal = 14.dp),
+                .border(0.75.dp, Color.White.copy(alpha = 0.22f), RoundedCornerShape(50))
+                .height(42.dp)
+                .padding(horizontal = 16.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp),
         ) {
@@ -274,11 +285,31 @@ fun StatusPill(
                 NetKind.Ethernet -> Glyph.Ethernet
                 NetKind.Offline -> Glyph.Offline
             }
-            GlyphIcon(glyph, fg, 17.dp, level = network.level)
+            SmoothStatusIcon(glyph, fg, 22.dp, level = network.level)
             if (showTime) {
                 BasicText(timeText(now), style = Type.Headline.copy(color = fg))
             }
-            GlyphIcon(Glyph.Gear, fg, 17.dp)
+            SmoothStatusIcon(Glyph.Gear, fg, 22.dp)
         }
     }
+}
+
+/**
+ * Small symbols are rasterized once at 3x and filtered down. This keeps diagonal gear edges and
+ * Wi-Fi arcs smooth on older TV GPUs, including the Hisense MTK9652, without a per-frame pass.
+ */
+@Composable
+private fun SmoothStatusIcon(glyph: Glyph, color: Color, size: Dp, level: Float = 1f) {
+    val density = LocalDensity.current
+    val direction = LocalLayoutDirection.current
+    val pixels = with(density) { size.roundToPx() } * 3
+    val signal = when { level < 0.34f -> 0.2f; level < 0.67f -> 0.5f; else -> 1f }
+    val bitmap = remember(glyph, color, pixels, signal, density, direction) {
+        ImageBitmap(pixels, pixels).also { image ->
+            CanvasDrawScope().draw(density, direction, BitmapCanvas(image), Size(pixels.toFloat(), pixels.toFloat())) {
+                drawGlyph(glyph, color, signal)
+            }
+        }
+    }
+    Image(bitmap, null, Modifier.size(size), filterQuality = FilterQuality.High)
 }

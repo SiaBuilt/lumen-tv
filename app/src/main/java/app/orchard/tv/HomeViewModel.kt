@@ -37,6 +37,7 @@ sealed interface Overlay {
     data class ControlCenter(val page: CcPage = CcPage.Main) : Overlay
     data class AppMenu(val key: String, val anchor: Rect) : Overlay
     data object HiddenApps : Overlay
+    data class AppOrder(val initialKey: String? = null) : Overlay
     /** Every app past the dock, behind the dock's last tile. */
     data object AllApps : Overlay
     data object Wallpaper : Overlay
@@ -45,6 +46,7 @@ sealed interface Overlay {
 
 /** The streaming apps Lumen is made for, docked even when they came with the TV (TCL 65V8L). */
 val DOCK_APPS = setOf("com.xiaodianshi.tv.yst", "com.ktcp.csvideo", "com.tcl.qiyiguo", "com.cibn.tv", "com.hunantv.market")
+const val HOME_COLUMNS = 6
 
 /** Covers are decoded at 720p: sharp enough under the shade, small enough for a 2 GB TV. */
 const val COVER_W = 1280
@@ -61,14 +63,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     var hiddenApps by mutableStateOf<List<AppEntry>>(emptyList()); private set
     var loaded by mutableStateOf(false); private set
 
-    /**
-     * Lumen's dock, in the owner's order: the streaming apps it is made for, then every app the
-     * owner installed (removable), then the All Apps tile. Only the TV's own apps wait behind it.
-     */
-    val dock: List<AppEntry> get() = apps.filter(::inDock) + allApps
-    /** The TV's own apps, behind the All Apps tile. */
-    val moreApps: List<AppEntry> get() = apps.filterNot(::inDock)
-    private fun inDock(app: AppEntry) = app.removable || app.packageName in DOCK_APPS
+    private val dockSize: Int get() = AerialSettings.homeRows * HOME_COLUMNS - 1
+    /** Keep the owner's fixed rows unless they opt into the upstream scrolling dock. */
+    val dock: List<AppEntry> get() = (if (AerialSettings.scrollingHome) apps.filter(::inDock) else apps.take(dockSize)) + allApps
+    /** The complement of Home, preserving the same stored app order in either layout. */
+    val moreApps: List<AppEntry> get() = if (AerialSettings.scrollingHome) apps.filterNot(::inDock) else apps.drop(dockSize)
+    private fun inDock(app: AppEntry) = app.removable || app.packageName in DOCK_APPS || app.source != null
     private val allApps by lazy { allAppsEntry(context) }
 
     /** What the owner was watching, newest first (TCL's launcher history); empty elsewhere. */
@@ -247,16 +247,25 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
     /** Moves the app being moved by [delta] places along the dock (All Apps stays last). */
     fun moveBy(delta: Int) {
         val key = movingKey ?: return
-        val row = apps.filter(::inDock)
+        val row = if (AerialSettings.scrollingHome) apps.filter(::inDock) else apps
         val from = row.indexOfFirst { it.key == key }
         if (from < 0) return
-        val to = (from + delta).coerceIn(0, row.lastIndex)
+        // Fixed-row apps stay on their side of All Apps; the scrolling dock has no fixed limit.
+        val first = if (AerialSettings.scrollingHome || from < dockSize) 0 else dockSize
+        val last = if (AerialSettings.scrollingHome || from >= dockSize) row.lastIndex else minOf(dockSize, row.size) - 1
+        val to = (from + delta).coerceIn(first, last)
         if (to == from) return
         store.move(key, row[to].key)
         arrange()
     }
 
     fun endMove() { movingKey = null }
+
+    fun applyAppOrder(keys: List<String>) {
+        val visible = apps.map { it.key }
+        store.reorderVisible(keys.filter { it in visible } + visible.filter { it !in keys })
+        arrange()
+    }
 
     /**
      * Home was pressed. On Home itself focus goes back to the top row, as on tvOS; coming back

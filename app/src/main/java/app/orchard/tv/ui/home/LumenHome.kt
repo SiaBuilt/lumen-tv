@@ -55,6 +55,7 @@ import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -244,23 +245,27 @@ val LumenGlass = Color.White.copy(alpha = 0.16f)
 val LumenGlassEdge = Color.White.copy(alpha = 0.22f)
 
 /**
- * Top left: the time, then the weather where the TV is. Plain text on a soft shadow, no chip: it
- * cannot be focused, so it must not look like something to press. The status pill opposite shows
- * its chip only when focused.
+ * A quiet clock with the date underneath and weather alongside it. It ticks only on the minute.
  */
 @Composable
 fun TimeWeatherChip(now: java.time.LocalDateTime, modifier: Modifier = Modifier) {
     val w = Weather.now
     Row(
-        modifier
-            .height(34.dp)
-            .padding(horizontal = 14.dp),
+        modifier.padding(horizontal = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        BasicText(timeText(now), style = Type.Headline.copy(color = Color.White, fontSize = 16.sp, shadow = BarShadow))
+        Column {
+            BasicText(timeText(now), style = Type.Clock.copy(
+                fontSize = 42.sp, lineHeight = 46.sp, fontWeight = FontWeight.W400,
+                letterSpacing = (-0.025).em, shadow = BarShadow,
+            ))
+            BasicText(dateText(now), style = Type.Body.copy(
+                fontSize = 14.sp, color = Color.White.copy(alpha = 0.82f), shadow = BarShadow,
+            ), modifier = Modifier.padding(top = 4.dp))
+        }
         if (w != null) {
-            Box(Modifier.padding(horizontal = 4.dp).size(1.dp, 14.dp).background(Color.White.copy(alpha = 0.35f)))
+            Box(Modifier.size(1.dp, 36.dp).background(Color.White.copy(alpha = 0.22f)))
             val glyph = when (w.kind) {
                 WeatherKind.Clear -> if (w.day) Glyph.Sun else Glyph.Moon
                 WeatherKind.PartlyCloudy -> if (w.day) Glyph.CloudSun else Glyph.Cloud
@@ -270,9 +275,9 @@ fun TimeWeatherChip(now: java.time.LocalDateTime, modifier: Modifier = Modifier)
                 WeatherKind.Snow -> Glyph.CloudSnow
                 WeatherKind.Thunder -> Glyph.CloudBolt
             }
-            GlyphIcon(glyph, if (w.kind == WeatherKind.Clear && w.day) Color(0xFFFFD25A) else Color.White, 16.dp)
+            GlyphIcon(glyph, if (w.kind == WeatherKind.Clear && w.day) Color(0xFFFFD25A) else Color.White, 22.dp)
             val place = Weather.place?.takeIf { it.length <= 12 }
-            BasicText(listOfNotNull(place, "${w.celsius}°").joinToString(" "), style = Type.Headline.copy(color = Color.White.copy(alpha = 0.92f), shadow = BarShadow))
+            BasicText(listOfNotNull(place, "${w.celsius}°").joinToString(" "), style = Type.Headline.copy(fontSize = 17.sp, color = Color.White.copy(alpha = 0.92f), shadow = BarShadow))
         }
     }
 }
@@ -348,7 +353,11 @@ fun AllAppsSheet(
                                         Spacer(Modifier.height(10.dp))
                                         BasicText(
                                             app.label, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                                            style = Type.Body.copy(fontSize = 15.sp, color = if (state.focused) Palette.Label else Color.White.copy(alpha = 0.7f)),
+                                            style = Type.Body.copy(
+                                                fontSize = 15.sp,
+                                                textAlign = TextAlign.Center,
+                                                color = if (state.focused) Palette.Label else Color.White.copy(alpha = 0.7f),
+                                            ),
                                             modifier = Modifier.width(132.dp),
                                         )
                                     }
