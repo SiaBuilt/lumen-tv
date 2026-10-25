@@ -55,12 +55,15 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.orchard.tv.apps.AppEntry
 import app.orchard.tv.settings.AerialSettings
+import app.orchard.tv.settings.AppNameMode
 import app.orchard.tv.settings.FocusStyle
 import app.orchard.tv.system.Sounds
 import app.orchard.tv.ui.components.isSelect
@@ -80,6 +83,8 @@ private val Corner = 12.dp
 // High-contrast focus frame: a white ring this far outside the tile, as tvOS draws it.
 private val RingGap = 5.dp
 private val RingWidth = 3.dp
+internal val AppLabelGap = 18.dp
+internal val appLabelHeight: Dp get() = (AerialSettings.appNameSize + 8).dp
 
 /**
  * One app on the home screen, drawn the tvOS way: it lifts toward you when focused, a soft light
@@ -96,7 +101,6 @@ fun AppTile(
     enabled: Boolean,
     moving: Boolean,
     appearDelayMs: Int,
-    onGlass: (() -> Float)?,
     onFocused: () -> Unit,
     onClick: (Rect?) -> Unit,
     onLongPress: (Rect?) -> Unit,
@@ -414,6 +418,10 @@ fun AppTile(
             text = app.label,
             style = Type.Headline.copy(
                 textAlign = TextAlign.Center,
+                fontSize = AerialSettings.appNameSize.sp,
+                lineHeight = (AerialSettings.appNameSize + 6).sp,
+                fontWeight = if (focused || moving) FontWeight.W600 else FontWeight.W500,
+                color = Color.White.copy(alpha = if (focused || moving) 1f else 0.76f),
                 // Names sit on the wallpaper; a soft shadow keeps them readable over bright photos.
                 shadow = Shadow(Color.Black.copy(alpha = 0.6f), blurRadius = 8f),
             ),
@@ -421,15 +429,15 @@ fun AppTile(
             overflow = TextOverflow.Ellipsis,
             modifier = Modifier
                 .align(Alignment.TopCenter)
-                .offset(y = height + 10.dp)
-                .requiredSize(width + 36.dp, 24.dp)
+                // A fixed baseline leaves room for the focus frame without moving either row.
+                .offset(y = height + AppLabelGap)
+                .requiredSize(width + 12.dp, appLabelHeight)
                 .graphicsLayer {
-                    // As on tvOS 26: no names on the glass of the top row; in the grid only the
-                    // focused app shows its name.
-                    alpha = lift * (1f - (onGlass?.invoke() ?: 0f))
-                    // Sits just under the lifted tile, and rises into place as it appears.
-                    translationY = height.toPx() * (scale - 1f) / 2f - (1f - lift) * 6.dp.toPx() +
-                        ring * ringIn * (RingGap + RingWidth).toPx() * scale
+                    alpha = when (AerialSettings.appNameMode) {
+                        AppNameMode.Always -> 1f
+                        AppNameMode.Focused -> lift
+                        AppNameMode.Hidden -> 0f
+                    }
                 },
         )
     }

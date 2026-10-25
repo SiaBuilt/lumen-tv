@@ -1,5 +1,6 @@
 package app.orchard.tv.ui.wallpaper
 
+import android.view.KeyEvent as NativeKeyEvent
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -52,6 +53,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -60,6 +63,7 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.orchard.tv.R
 import app.orchard.tv.settings.AerialSettings
+import app.orchard.tv.settings.AppNameMode
 import app.orchard.tv.settings.FocusStyle
 import app.orchard.tv.ui.components.Pressable
 import app.orchard.tv.ui.components.consumeTaps
@@ -84,7 +88,7 @@ import kotlinx.coroutines.withContext
 import kotlin.math.roundToInt
 
 /**
- * Wallpaper and screensaver, chosen on the TV. A sheet rises from the bottom and leaves the top of
+ * Personalization on the TV. A sheet rises from the bottom and leaves the top of
  * the screen showing Home, so a new wallpaper can be seen the moment it is chosen. A QR code on the
  * right opens the same settings on a phone, where sending photos is easy.
  */
@@ -93,6 +97,7 @@ fun WallpaperSheet(
     visible: Boolean,
     onDismiss: () -> Unit,
     hiddenCount: Int,
+    onOrder: () -> Unit,
     onHiddenApps: () -> Unit,
     onStartScreensaver: () -> Unit,
     onPin: (on: Boolean) -> Unit,
@@ -154,8 +159,31 @@ fun WallpaperSheet(
                     Group { note ->
                         Choices(
                             R.string.st_layout, stringResource(R.string.st_home_layout_hint), note,
-                            listOf(true to R.string.st_home_one_row, false to R.string.st_home_standard),
-                            AerialSettings.oneRowHome, AerialSettings::chooseOneRowHome, first = true,
+                            listOf(false to R.string.lumen_layout_rows, true to R.string.lumen_layout_scrolling),
+                            AerialSettings.scrollingHome, AerialSettings::chooseScrollingHome, first = true,
+                        )
+                        if (!AerialSettings.scrollingHome) {
+                            Choices(
+                                R.string.lumen_rows, stringResource(R.string.st_home_layout_hint), note,
+                                listOf(1 to R.string.st_home_one_row, 2 to R.string.st_home_standard, 3 to R.string.st_home_three_rows),
+                                AerialSettings.homeRows, AerialSettings::chooseHomeRows,
+                            )
+                        }
+                        CyclingChoice(
+                            R.string.lumen_app_bar_transparency,
+                            stringResource(R.string.lumen_app_bar_transparency_hint), note,
+                            AerialSettings.appBarTransparencies.map { it to stringResource(R.string.lumen_transparency_percent, it) },
+                            AerialSettings.appBarTransparency, AerialSettings::chooseAppBarTransparency,
+                        )
+                        Choices(
+                            R.string.lumen_name_size, null, note,
+                            AerialSettings.appNameSizes.map { it to it.toString() },
+                            AerialSettings.appNameSize, AerialSettings::chooseAppNameSize,
+                        )
+                        CyclingChoice(
+                            R.string.lumen_name_mode, null, note,
+                            listOf(AppNameMode.Always to stringResource(R.string.lumen_names_always), AppNameMode.Focused to stringResource(R.string.lumen_names_focused), AppNameMode.Hidden to stringResource(R.string.lumen_names_hidden)),
+                            AerialSettings.appNameMode, AerialSettings::chooseAppNameMode,
                         )
                         Choices(
                             R.string.st_clock, stringResource(R.string.st_clock_hint), note,
@@ -174,6 +202,9 @@ fun WallpaperSheet(
                             listOf(true to R.string.st_on, false to R.string.st_off),
                             AerialSettings.uiSounds, AerialSettings::chooseUiSounds,
                         )
+                        SettingRow(R.string.lumen_app_order, stringResource(R.string.lumen_manage_hint), note) {
+                            ActionChip(stringResource(R.string.lumen_order_edit), Glyph.ChevronRight, onOrder)
+                        }
                         // Apps taken off Home are kept with the rest of how Home looks.
                         SettingRow(R.string.st_hidden_apps, stringResource(R.string.st_hidden_apps_hint), note) {
                             ActionChip(
@@ -370,6 +401,48 @@ private fun <T> Choices(
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             options.forEach { (value, text) ->
                 Chip(if (text is Int) stringResource(text) else text.toString(), on = current == value) { choose(value) }
+            }
+        }
+    }
+}
+
+/** A compact value picker for settings with too many values to fit in a row of chips. */
+@Composable
+private fun <T> CyclingChoice(
+    label: Int,
+    hint: String?,
+    note: (String?) -> Unit,
+    options: List<Pair<T, String>>,
+    current: T,
+    choose: (T) -> Unit,
+) {
+    val index = options.indexOfFirst { it.first == current }.coerceAtLeast(0)
+    fun step(delta: Int) = choose(options[(index + delta + options.size) % options.size].first)
+    SettingRow(label, hint, note) {
+        Pressable(
+            onClick = { step(1) }, focusedScale = 1.06f,
+            onKey = { e ->
+                val delta = when (e.nativeKeyEvent.keyCode) {
+                    NativeKeyEvent.KEYCODE_DPAD_LEFT -> -1
+                    NativeKeyEvent.KEYCODE_DPAD_RIGHT -> 1
+                    else -> 0
+                }
+                if (delta == 0) false else {
+                    if (e.type == KeyEventType.KeyDown) step(delta)
+                    true
+                }
+            },
+        ) { state ->
+            val bg by animateColorAsState(if (state.focused) Palette.Focus else Palette.FillStrong, tween(140, easing = Motion.EaseOut), label = "value-bg")
+            val fg = if (state.focused) Palette.OnFocus else Palette.Label
+            Row(
+                Modifier.clip(RoundedCornerShape(50)).background(bg).height(40.dp).padding(horizontal = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                GlyphIcon(Glyph.ChevronLeft, fg, 16.dp)
+                BasicText(options[index].second, style = Type.Body.copy(color = fg))
+                GlyphIcon(Glyph.ChevronRight, fg, 16.dp)
             }
         }
     }

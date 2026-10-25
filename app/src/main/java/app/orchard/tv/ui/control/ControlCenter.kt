@@ -86,6 +86,9 @@ import app.orchard.tv.ui.theme.Type
 import app.orchard.tv.wallpaper.PhoneServer
 import java.time.LocalDateTime
 
+// Temporarily hide upstream updates while this customized home screen is in use.
+private const val SHOW_UPDATE_ENTRY = false
+
 /**
  * tvOS Control Center: a glass panel that drops in from the top-right corner over a blurred Home.
  * Inputs open as a second page inside the same panel, the way tvOS shows audio routes.
@@ -208,6 +211,10 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
         VolumeRow(vm)
         Spacer(Modifier.height(8.dp))
         BrightnessRow(vm)
+        Spacer(Modifier.height(8.dp))
+        MenuRow(Glyph.Switches, stringResource(R.string.wp_title), onClick = {
+            vm.whenUnlocked { vm.overlay = Overlay.Wallpaper }
+        })
 
 
         // The weather's city: guessed from the network, which in China often lands a city off.
@@ -217,7 +224,7 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
             trailing = if (app.orchard.tv.weather.Weather.chosen) app.orchard.tv.weather.Weather.place else stringResource(R.string.cc_city_auto),
             onClick = { vm.overlay = Overlay.ControlCenter(CcPage.City) },
         )
-        Updates.available?.let { latest ->
+        Updates.available?.takeIf { SHOW_UPDATE_ENTRY }?.let { latest ->
             Spacer(Modifier.height(8.dp))
             // Downloads and opens the system installer, which asks on screen.
             val progress = Updates.downloading
