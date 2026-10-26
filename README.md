@@ -164,7 +164,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@17
 ./gradlew assembleGuardRelease
 ```
 
-发新版本：`app/build.gradle.kts` 里 `versionCode` 加 1 并改 `versionName`，`version.txt` 写新版本号，编译后在 GitHub 发 Release（附 `lumen-guard.apk`），再运行 `tools/publish-update.sh` 同步到 lumen.siabuilt.com。电视会在几小时内（或打开控制中心时）提示更新。
+发新版本：`app/build.gradle.kts` 里 `versionCode` 加 1 并改 `versionName`，`version.txt` 写「版本名 versionCode」（如 `1.2 61`，电视按 versionCode 判断新旧），编译后在 GitHub 发 Release（附 `lumen-guard.apk`），再运行 `tools/publish-update.sh` 同步到 lumen.siabuilt.com。电视会在几小时内（或打开控制中心时）提示更新。
 
 Kotlin + Jetpack Compose，界面按 960×540dp 设计。代码结构见 [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)。
 

@@ -18,7 +18,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 
 /**
- * Whether a newer Lumen is out. Every few hours Lumen reads the latest version number from its
+ * Whether a newer Lumen is out. Every few hours Lumen reads the latest release ("<name> <code>") from its
  * repository (version.txt, through jsDelivr's CDN, which is reachable in China, else GitHub);
  * Control Center then names the new version, and Home says so once. Nothing is downloaded or
  * installed in the background: TCL takes installs only through 多屏互动, with an Agree on the TV.
@@ -56,7 +56,7 @@ object Updates {
         started = true
         app = context.applicationContext
         prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
-        available = prefs.getString("latest", null)?.takeIf { newer(it, current) }
+        available = parse(prefs.getString("release", null))?.takeIf { it.second > BuildConfig.VERSION_CODE }?.first
     }
 
     /**
@@ -80,10 +80,10 @@ object Updates {
                     .let { if (it == null) Result.failure(IllegalStateException("no version source answered")) else Result.success(it) }
                     .onFailure { Log.w(TAG, "could not check for a new version", it) }
                     .getOrNull()
-                    ?.takeIf { it.matches(Regex("\\d+(\\.\\d+)*")) }
+                    ?.takeIf { parse(it) != null }
             } ?: return@launch
-            prefs.edit { putString("latest", latest); putLong("checked_at", System.currentTimeMillis()) }
-            available = latest.takeIf { newer(it, current) }
+            prefs.edit { putString("release", latest); putLong("checked_at", System.currentTimeMillis()) }
+            available = parse(latest)?.takeIf { it.second > BuildConfig.VERSION_CODE }?.first
             // Said once on Home for each new version; Control Center keeps saying it.
             available?.takeIf { prefs.getString("announced", null) != it }?.let { v ->
                 prefs.edit { putString("announced", v) }
@@ -92,15 +92,14 @@ object Updates {
         }
     }
 
-    /** Whether version [a] comes after [b], comparing dotted numbers ("1.10" after "1.9"). */
-    fun newer(a: String, b: String): Boolean {
-        val x = a.split('.').map { it.toIntOrNull() ?: 0 }
-        val y = b.split('.').map { it.toIntOrNull() ?: 0 }
-        for (i in 0 until maxOf(x.size, y.size)) {
-            val d = x.getOrElse(i) { 0 } - y.getOrElse(i) { 0 }
-            if (d != 0) return d > 0
-        }
-        return false
+    /**
+     * version.txt is "<name> <versionCode>", e.g. "1.2 61". The code decides what is newer, so the
+     * name may start over (the test releases before 1.2 went up to 1.5).
+     */
+    private fun parse(text: String?): Pair<String, Int>? {
+        val parts = text?.trim()?.split(Regex("\\s+")) ?: return null
+        val code = parts.getOrNull(1)?.toIntOrNull() ?: return null
+        return parts[0].removePrefix("v") to code
     }
 
     /**

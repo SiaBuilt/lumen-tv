@@ -164,7 +164,7 @@ export JAVA_HOME=/opt/homebrew/opt/openjdk@17
 ./gradlew assembleGuardRelease
 ```
 
-To release: raise `versionCode` and `versionName` in `app/build.gradle.kts`, put the version in `version.txt`, build, publish a GitHub release with `lumen-guard.apk`, then run `tools/publish-update.sh` to mirror it to lumen.siabuilt.com. TVs offer the update within a few hours (or when Control Center opens).
+To release: raise `versionCode` and `versionName` in `app/build.gradle.kts`, put "<name> <versionCode>" in `version.txt` (e.g. `1.2 61`; TVs compare the versionCode), build, publish a GitHub release with `lumen-guard.apk`, then run `tools/publish-update.sh` to mirror it to lumen.siabuilt.com. TVs offer the update within a few hours (or when Control Center opens).
 
 Kotlin and Jetpack Compose, laid out on a 960×540 dp canvas. Code structure: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
