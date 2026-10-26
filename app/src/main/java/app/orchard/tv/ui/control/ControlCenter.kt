@@ -214,7 +214,8 @@ private fun MainPage(vm: HomeViewModel, now: LocalDateTime, takeFocus: Boolean, 
         MenuRow(
             Glyph.CloudSun,
             stringResource(R.string.cc_city),
-            trailing = if (app.orchard.tv.weather.Weather.chosen) app.orchard.tv.weather.Weather.place else stringResource(R.string.cc_city_auto),
+            // Where the weather is for, chosen or found; "Automatic" only until the network has said.
+            trailing = app.orchard.tv.weather.Weather.place ?: stringResource(R.string.cc_city_auto),
             onClick = { vm.overlay = Overlay.ControlCenter(CcPage.City) },
         )
         Updates.available?.let { latest ->
@@ -433,7 +434,8 @@ private fun CityPage(vm: HomeViewModel, takeFocus: Boolean) {
         Spacer(Modifier.height(8.dp))
         MenuRow(
             if (!app.orchard.tv.weather.Weather.chosen) Glyph.Check else Glyph.Wifi,
-            stringResource(R.string.cc_city_auto),
+            stringResource(R.string.cc_city_auto) +
+                (app.orchard.tv.weather.Weather.place?.takeIf { !app.orchard.tv.weather.Weather.chosen }?.let { "（$it）" } ?: ""),
             focusRequester = first,
             onClick = { app.orchard.tv.weather.Weather.useNetworkLocation(); back() },
         )
