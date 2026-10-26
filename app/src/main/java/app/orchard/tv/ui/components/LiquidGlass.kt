@@ -41,8 +41,17 @@ import app.orchard.tv.wallpaper.Wallpapers
  *
  * Replaces clip + background + border; [bottomCorners] false for a sheet rising from the bottom.
  */
+/**
+ * What Lumen's glass shows through: the frosted copy of whatever fills the screen now, the cover
+ * being resumed or else the wallpaper. Set by Home; every panel, the dock and the sheets use it,
+ * so the glass is one material everywhere.
+ */
+object GlassSource {
+    var frost by mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null)
+}
+
 fun Modifier.liquidGlass(corner: Dp, bottomCorners: Boolean = true): Modifier = composed {
-    val frost = Wallpapers.frosted.takeIf { Wallpapers.backdrop != null }
+    val frost = GlassSource.frost ?: Wallpapers.frosted.takeIf { Wallpapers.backdrop != null }
     var at by remember { mutableStateOf(Offset.Zero) }
     var root by remember { mutableStateOf(IntSize.Zero) }
     val shape = if (bottomCorners) RoundedCornerShape(corner) else RoundedCornerShape(topStart = corner, topEnd = corner)
@@ -68,6 +77,8 @@ fun Modifier.liquidGlass(corner: Dp, bottomCorners: Boolean = true): Modifier = 
                     })
                     drawRect(brush, colorFilter = PanelTint)
                 }
+                // Thick glass: light falls from the top, so the pane is brighter there.
+                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.14f), 1f to Color.White.copy(alpha = 0.04f)))
                 // A sheet's rim runs off the bottom with its corners.
                 val h = if (bottomCorners) size.height else size.height + radius
                 drawGlassEdge(Offset.Zero, Size(size.width, h), radius, 1f)
@@ -84,7 +95,7 @@ fun DrawScope.drawGlassEdge(topLeft: Offset, size: Size, radius: Float, strength
     if (strength <= 0.01f) return
     drawRoundRect(
         Brush.verticalGradient(
-            0f to Color.White.copy(alpha = 0.10f * strength),
+            0f to Color.White.copy(alpha = 0.18f * strength),
             1f to Color.Transparent,
             startY = topLeft.y,
             endY = topLeft.y + size.height * 0.5f,
@@ -96,7 +107,7 @@ fun DrawScope.drawGlassEdge(topLeft: Offset, size: Size, radius: Float, strength
     val w = 1.2.dp.toPx()
     drawRoundRect(
         Brush.linearGradient(
-            0f to Color.White.copy(alpha = 0.55f * strength),
+            0f to Color.White.copy(alpha = 0.7f * strength),
             0.35f to Color.White.copy(alpha = 0.10f * strength),
             0.7f to Color.White.copy(alpha = 0.06f * strength),
             1f to Color.White.copy(alpha = 0.30f * strength),

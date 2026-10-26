@@ -10,6 +10,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
@@ -151,6 +152,11 @@ fun HomeBackground(backdrop: ImageBitmap?, frosted: ImageBitmap?, plate: Rect?, 
                 alpha = fade,
                 colorFilter = PlateTint,
             )
+            // Thick glass, as Lumen's panels: brighter at the top where the light falls.
+            drawRoundRect(
+                Brush.verticalGradient(0f to Color.White.copy(alpha = 0.22f * fade), 1f to Color.White.copy(alpha = 0.06f * fade), startY = r.top, endY = r.bottom),
+                topLeft = r.topLeft, size = r.size, cornerRadius = CornerRadius(radius + grow),
+            )
             drawGlassEdge(r.topLeft, r.size, radius + grow, fade)
         }
     }
@@ -171,9 +177,9 @@ private val PlateSwell = 14.dp
 
 /** The plate's tint: the frosted picture a little darker, lifted with white, so it reads as milky glass. */
 private val PlateTint = ColorFilter.colorMatrix(ColorMatrix(floatArrayOf(
-    0.8f, 0f, 0f, 0f, 30f,
-    0f, 0.8f, 0f, 0f, 30f,
-    0f, 0f, 0.8f, 0f, 30f,
+    0.9f, 0f, 0f, 0f, 42f,
+    0f, 0.9f, 0f, 0f, 42f,
+    0f, 0f, 0.9f, 0f, 42f,
     0f, 0f, 0f, 1f, 0f,
 )))
 

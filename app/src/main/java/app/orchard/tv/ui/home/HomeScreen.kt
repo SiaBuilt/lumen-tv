@@ -52,6 +52,8 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
@@ -342,6 +344,10 @@ fun HomeScreen(
                 )
             }
             val cover = heroCover(hero)
+            // The cover frosted for the glass (dock plate, panels): there is no live blur on these TVs.
+            val frostedCover = remember(cover) { cover?.let { app.orchard.tv.wallpaper.Images.frost(it.asAndroidBitmap()).asImageBitmap() } }
+            val glass = frostedCover ?: Wallpapers.frosted.takeIf { Wallpapers.backdrop != null }
+            androidx.compose.runtime.SideEffect { app.orchard.tv.ui.components.GlassSource.frost = glass }
             // Each new cover comes up from dim, like a stage light, then rests. Not a push-in: scaling
             // cropped landscape covers at every edge, titles and faces with them.
             val dim = remember { Animatable(0f) }
@@ -355,7 +361,7 @@ fun HomeScreen(
                 // The title being resumed fills the screen; without one, the chosen wallpaper (in
                 // "Follow App" mode, light from the focused app).
                 backdrop = cover ?: Wallpapers.backdrop ?: ambientApp?.art?.backdrop,
-                frosted = Wallpapers.frosted.takeIf { cover == null && Wallpapers.backdrop != null },
+                frosted = glass,
                 plate = plate,
                 scroll = { scroll.value },
                 collapse = collapsePx,

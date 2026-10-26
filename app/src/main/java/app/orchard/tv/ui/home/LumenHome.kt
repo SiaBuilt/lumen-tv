@@ -68,6 +68,7 @@ import app.orchard.tv.history.TclHistory
 import app.orchard.tv.ui.components.Pressable
 import app.orchard.tv.ui.components.consumeTaps
 import app.orchard.tv.ui.components.dismissOnTap
+import app.orchard.tv.ui.components.liquidGlass
 import app.orchard.tv.ui.theme.Glyph
 import app.orchard.tv.ui.theme.GlyphIcon
 import app.orchard.tv.ui.theme.Motion
@@ -233,9 +234,6 @@ fun HeroInfo(
     }
 }
 
-/** The All Apps sheet: the same neutral glass, dense enough to read rows of labels over a cover. */
-val SheetGlass = Color(0xF0222226)
-
 /** Keeps the top bar's bare text readable over bright covers. */
 private val BarShadow = Shadow(Color.Black.copy(alpha = 0.55f), blurRadius = 10f)
 
@@ -323,9 +321,7 @@ fun AllAppsSheet(
                     .width(820.dp)
                     .consumeTaps()
                     .heightIn(max = 480.dp)
-                    .clip(RoundedCornerShape(28.dp))
-                    .background(SheetGlass)
-                    .border(0.75.dp, LumenGlassEdge, RoundedCornerShape(28.dp))
+                    .liquidGlass(28.dp)
                     .padding(28.dp),
             ) {
                 BasicText(stringResource(R.string.all_apps), style = Type.LargeTitle, modifier = Modifier.padding(bottom = 18.dp))
