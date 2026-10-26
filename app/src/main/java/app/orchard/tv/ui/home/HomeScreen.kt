@@ -44,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlurEffect
@@ -341,13 +342,15 @@ fun HomeScreen(
                 )
             }
             val cover = heroCover(hero)
-            // tvOS lets the featured picture drift closer while it waits; once, then it rests.
-            val push = remember { Animatable(1f) }
+            // Each new cover comes up from dim, like a stage light, then rests. Not a push-in: scaling
+            // cropped landscape covers at every edge, titles and faces with them.
+            val dim = remember { Animatable(0f) }
             LaunchedEffect(cover) {
-                push.snapTo(1f)
-                if (cover != null && !reduced) push.animateTo(1.06f, tween(14_000, easing = Motion.EaseInOut))
+                if (cover == null || reduced) { dim.snapTo(0f); return@LaunchedEffect }
+                dim.snapTo(0.45f)
+                dim.animateTo(0f, tween(2_500, easing = Motion.EaseOut))
             }
-            Box(Modifier.fillMaxSize().graphicsLayer { scaleX = push.value; scaleY = push.value }) {
+            Box(Modifier.fillMaxSize().drawWithContent { drawContent(); if (dim.value > 0.005f) drawRect(Color.Black, alpha = dim.value) }) {
             HomeBackground(
                 // The title being resumed fills the screen; without one, the chosen wallpaper (in
                 // "Follow App" mode, light from the focused app).
