@@ -138,7 +138,12 @@ object AppCatalog {
      * and a few with no launcher category at all (see [UNLISTED_ENTRIES]).
      * One tile per package; the TV entry wins.
      */
-    suspend fun load(context: Context): List<AppEntry> = withContext(Dispatchers.Default) {
+    /**
+     * [only], when given, picks which packages to build tiles for (package name, is a system app):
+     * Lumen loads its dock first, so a restart after an update shows the dock at once rather than
+     * after every tile on the TV has been drawn.
+     */
+    suspend fun load(context: Context, only: ((String, Boolean) -> Boolean)? = null): List<AppEntry> = withContext(Dispatchers.Default) {
         val pm = context.packageManager
         val found = LinkedHashMap<String, Pair<ActivityInfo, Boolean>>()
         pm.queryIntentActivities(Intent(Intent.ACTION_MAIN).addCategory(Intent.CATEGORY_LEANBACK_LAUNCHER), 0)
@@ -162,10 +167,12 @@ object AppCatalog {
             ?.let { byCategory.putIfAbsent(it.activityInfo.packageName, SystemTile.Settings) }
 
         coroutineScope {
-            found.values.map { (info, leanback) ->
+            found.values.filter { (info, _) ->
+                only == null || only(info.packageName, (info.applicationInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0)
+            }.map { (info, leanback) ->
                 async { runCatching { entry(pm, info, leanback, byCategory) }.getOrNull() }
             }.awaitAll().filterNotNull()
-        }.also { loaded = it }
+        }.also { if (only == null) loaded = it }
     }
 
     /**

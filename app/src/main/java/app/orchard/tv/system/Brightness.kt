@@ -49,7 +49,9 @@ object Brightness {
             // setting (TCL MT5879, Sony BRAVIA VH1, Xiaomi without picture_backlight); Control
             // Center opens their picture panels.
             // Before Android 6.0 WRITE_SETTINGS is granted at install.
-            if (isTcl(context) || isSony(context) || isXiaomi(context) || Build.VERSION.SDK_INT >= 23 && !Settings.System.canWrite(context)) return null
+            // TCL 65V8L shows a brightness tile in its own quick settings over this same setting,
+            // so Lumen offers the slider there too (MT5879 ignored it; see above).
+            if (isSony(context) || isXiaomi(context) || Build.VERSION.SDK_INT >= 23 && !Settings.System.canWrite(context)) return null
             Settings.System.getInt(r, Settings.System.SCREEN_BRIGHTNESS, 128) / 255f
         }
     }

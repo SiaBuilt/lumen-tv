@@ -109,6 +109,20 @@ object Updates {
      */
     @Volatile var confirmSelfUntil = 0L
 
+    /**
+     * [confirmSelfUntil], kept on disk: installing the update restarts Lumen, and the new process
+     * must still recognise the installer's "done" dialog as its own (TCL 65V8L, 1.2 → 1.3).
+     */
+    fun confirmUntil(context: Context): Long = maxOf(
+        confirmSelfUntil,
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getLong("confirm_until", 0L),
+    )
+
+    fun stopConfirming(context: Context) {
+        confirmSelfUntil = 0L
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { remove("confirm_until") }
+    }
+
     /** Download progress 0..1 while a new version is being fetched; null otherwise. */
     var downloading by mutableStateOf<Float?>(null); private set
 
@@ -191,6 +205,7 @@ object Updates {
             return
         }
         confirmSelfUntil = System.currentTimeMillis() + 5 * 60_000L
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putLong("confirm_until", confirmSelfUntil) }
         val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.files", apk)
         context.startActivity(
             android.content.Intent(android.content.Intent.ACTION_VIEW)

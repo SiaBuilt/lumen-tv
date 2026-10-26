@@ -134,6 +134,12 @@ class HomeViewModel(app: Application) : AndroidViewModel(app) {
         loadJob?.cancel()
         loadJob = viewModelScope.launch {
             val ctx = context
+            // The dock first, the TV's own apps after: tiles are drawn afresh after every restart.
+            if (!loaded) {
+                all = AppCatalog.load(ctx) { pkg, system -> pkg in DOCK_APPS || !system }
+                arrange()
+                loaded = true
+            }
             all = AppCatalog.load(ctx)
             sources = withContext(Dispatchers.Default) { SystemProbe.sources(ctx) }
             arrange()

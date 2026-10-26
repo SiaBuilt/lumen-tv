@@ -262,7 +262,7 @@ class HomeGuardService : AccessibilityService() {
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
-        if (pkg == INSTALLER && System.currentTimeMillis() < app.orchard.tv.update.Updates.confirmSelfUntil) {
+        if (pkg == INSTALLER && System.currentTimeMillis() < app.orchard.tv.update.Updates.confirmUntil(this)) {
             // The button can be disabled for a moment as the installer appears: try again shortly.
             listOf(0L, 700L, 1600L).forEach { confirmHandler.postDelayed({ confirmOwnUpdate() }, it) }
         }
@@ -295,18 +295,32 @@ class HomeGuardService : AccessibilityService() {
     private val confirmHandler = android.os.Handler(android.os.Looper.getMainLooper())
 
     private fun confirmOwnUpdate() {
-        if (System.currentTimeMillis() >= app.orchard.tv.update.Updates.confirmSelfUntil) return
+        if (System.currentTimeMillis() >= app.orchard.tv.update.Updates.confirmUntil(this)) return
         val root = rootInActiveWindow ?: return
         if (root.packageName?.toString() != INSTALLER) return
         val label = applicationInfo.loadLabel(packageManager).toString()
         if (root.findAccessibilityNodeInfosByText(label).isNullOrEmpty()) return
-        val button = root.findAccessibilityNodeInfosByViewId("$INSTALLER:id/ok_button").firstOrNull()
-            ?: CONFIRM_WORDS.asSequence().flatMap { root.findAccessibilityNodeInfosByText(it).orEmpty().asSequence() }
-                .firstOrNull { it.isClickable && it.isEnabled }
+        fun firstButton(words: List<String>) = words.asSequence()
+            .flatMap { root.findAccessibilityNodeInfosByText(it).orEmpty().asSequence() }
+            .map { n -> if (n.isClickable) n else n.parent ?: n }
+            .firstOrNull { it.isClickable && it.isEnabled }
+        // Installed: TCL then asks "安装已完成，是否立即体验?"; its 立即体验 is disabled while Lumen
+        // restarts. Close it, and Home Guard brings Lumen back.
+        val done = DONE_HINTS.any { !root.findAccessibilityNodeInfosByText(it).isNullOrEmpty() }
+        if (done) {
+            val close = firstButton(DONE_WORDS) ?: return
+            if (close.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)) {
+                Log.i(TAG, "closed the installer's done dialog for Lumen's own update")
+                app.orchard.tv.update.Updates.stopConfirming(this)
+                confirmHandler.postDelayed({ goHome() }, 500)
+            }
+            return
+        }
+        val button = root.findAccessibilityNodeInfosByViewId("$INSTALLER:id/ok_button").firstOrNull()?.takeIf { it.isEnabled }
+            ?: firstButton(CONFIRM_WORDS)
             ?: return
-        if (button.isEnabled && button.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)) {
+        if (button.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)) {
             Log.i(TAG, "pressed Update in the installer for Lumen's own update")
-            app.orchard.tv.update.Updates.confirmSelfUntil = 0L
         }
     }
 
@@ -379,6 +393,8 @@ class HomeGuardService : AccessibilityService() {
     companion object {
         private const val INSTALLER = "com.android.packageinstaller"
         private val CONFIRM_WORDS = listOf("立即更新", "更新", "安装", "Update", "Install")
+        private val DONE_HINTS = listOf("安装已完成", "已安装", "App installed", "installed")
+        private val DONE_WORDS = listOf("暂不体验", "完成", "Done")
 
         private const val TAG = "AerialGuard"
         private const val BOOT_WINDOW_MS = 3 * 60 * 1000L
