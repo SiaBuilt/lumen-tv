@@ -79,8 +79,8 @@ import app.orchard.tv.weather.WeatherKind
 
 /**
  * The cover of [item]: at once when it was fetched ahead (HomeViewModel.refreshHistory), else once
- * downloaded. Until then the previous cover stays up, so the picture never drops to the wallpaper
- * or shows the last title under the new one's name for longer than the crossfade.
+ * downloaded. Until then the previous cover stays up, so the picture does not flash to the
+ * wallpaper; if the download fails, the wallpaper shows.
  */
 @Composable
 fun heroCover(item: HistoryItem?): ImageBitmap? {
@@ -92,7 +92,9 @@ fun heroCover(item: HistoryItem?): ImageBitmap? {
             item == null -> shown = null
             ready != null -> shown = ready
             url == null -> shown = null
-            else -> TclHistory.cover(url, COVER_W, COVER_H)?.let { shown = it.asImageBitmap() }
+            // A cover that cannot be had shows nothing rather than the previous title's (Youku's
+            // 抓特务 showed Mango's 你好星期六, TCL 65V8L).
+            else -> shown = TclHistory.cover(url, COVER_W, COVER_H)?.asImageBitmap()
         }
     }
     return ready ?: shown
@@ -321,7 +323,7 @@ fun AllAppsSheet(
                     .width(820.dp)
                     .consumeTaps()
                     .heightIn(max = 480.dp)
-                    .liquidGlass(28.dp)
+                    .liquidGlass(28.dp, sheen = 0.3f)
                     .padding(28.dp),
             ) {
                 BasicText(stringResource(R.string.all_apps), style = Type.LargeTitle, modifier = Modifier.padding(bottom = 18.dp))

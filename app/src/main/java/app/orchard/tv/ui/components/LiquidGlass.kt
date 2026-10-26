@@ -50,7 +50,8 @@ object GlassSource {
     var frost by mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null)
 }
 
-fun Modifier.liquidGlass(corner: Dp, bottomCorners: Boolean = true): Modifier = composed {
+/** [sheen]: how much light the pane catches; large panes (All Apps) take less, or they glare. */
+fun Modifier.liquidGlass(corner: Dp, bottomCorners: Boolean = true, sheen: Float = 1f): Modifier = composed {
     val frost = GlassSource.frost ?: Wallpapers.frosted.takeIf { Wallpapers.backdrop != null }
     var at by remember { mutableStateOf(Offset.Zero) }
     var root by remember { mutableStateOf(IntSize.Zero) }
@@ -78,7 +79,9 @@ fun Modifier.liquidGlass(corner: Dp, bottomCorners: Boolean = true): Modifier = 
                     drawRect(brush, colorFilter = PanelTint)
                 }
                 // Thick glass: light falls from the top, so the pane is brighter there.
-                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.14f), 1f to Color.White.copy(alpha = 0.04f)))
+                drawRect(Brush.verticalGradient(0f to Color.White.copy(alpha = 0.14f * sheen), 1f to Color.White.copy(alpha = 0.04f * sheen)))
+                // Large panes darken a little more, so rows of labels read over a bright cover.
+                if (sheen < 1f) drawRect(Color.Black.copy(alpha = 0.25f * (1f - sheen)))
                 // A sheet's rim runs off the bottom with its corners.
                 val h = if (bottomCorners) size.height else size.height + radius
                 drawGlassEdge(Offset.Zero, Size(size.width, h), radius, 1f)

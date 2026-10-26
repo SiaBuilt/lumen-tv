@@ -134,12 +134,20 @@ object Updates {
      * which asks on screen. TCL refuses installs from adb but accepts an app opening its installer
      * this way (as 当贝 does); install.sh grants Lumen REQUEST_INSTALL_PACKAGES up front.
      */
-    fun install(context: Context) {
+    /**
+     * Installs the new version. First through TCL's 多屏互动, which installs in the background with
+     * one Agree that Home Guard presses, and no installer screens at all; failing that (not a TCL,
+     * or [quiet]), through the system installer, which asks on screen.
+     */
+    fun install(context: Context, quiet: Boolean = false) {
         val version = available ?: return
         if (downloading != null) return
         failed = false
         downloading = 0f
         scope.launch {
+            val pushed = withContext(Dispatchers.IO) { runCatching { tcastInstall(context) }.getOrDefault(false) }
+            if (pushed) { downloading = null; return@launch }
+            if (quiet) { downloading = null; return@launch }
             val apk = withContext(Dispatchers.IO) {
                 listOf(
                     "https://lumen.siabuilt.com/lumen-${BuildConfig.FLAVOR}.apk",
@@ -155,6 +163,70 @@ object Updates {
             runCatching { openInstaller(context, apk) }
                 .onFailure { Log.w(TAG, "could not open the installer", it); failed = true }
         }
+    }
+
+    /**
+     * Updates when nobody is watching: called as the screensaver starts. At most every six hours,
+     * and only where 多屏互动 can install without screens.
+     */
+    fun installWhenIdle(context: Context) {
+        if (available == null || downloading != null) return
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        if (System.currentTimeMillis() - prefs.getLong("auto_tried_at", 0) < 6 * 60 * 60_000L) return
+        prefs.edit { putLong("auto_tried_at", System.currentTimeMillis()) }
+        Log.i(TAG, "idle: installing $available in the background")
+        install(context, quiet = true)
+    }
+
+    /**
+     * Asks TCL's 多屏互动 (port 6553 on the TV's own Wi-Fi address; it does not listen on loopback)
+     * to download the APK from lumen.siabuilt.com and install it, as tools/tcast-push.py does from
+     * a computer. Keeps the session alive until the install starts, or the update replaces this
+     * process. False when 多屏互动 is not there or says no.
+     */
+    private fun tcastInstall(context: Context): Boolean {
+        val ip = java.net.NetworkInterface.getNetworkInterfaces().toList()
+            .filter { it.isUp && !it.isLoopback }
+            .flatMap { it.inetAddresses.toList() }
+            .firstOrNull { it is java.net.Inet4Address && it.isSiteLocalAddress } ?: return false
+        val url = "https://lumen.siabuilt.com/lumen-${BuildConfig.FLAVOR}.apk"
+        val label = context.applicationInfo.loadLabel(context.packageManager).toString()
+        java.net.Socket().use { sock ->
+            sock.connect(java.net.InetSocketAddress(ip, 6553), 3000)
+            sock.soTimeout = 1000
+            val out = java.io.DataOutputStream(sock.getOutputStream())
+            val input = java.io.DataInputStream(sock.getInputStream())
+            fun send(text: String) { val b = text.toByteArray(); out.writeInt(b.size); out.write(b); out.flush() }
+            val md5 = java.security.MessageDigest.getInstance("MD5").digest(url.toByteArray()).joinToString("") { "%02x".format(it) }
+            setConfirming(context)
+            send("159>>1>>0")
+            send(listOf("223", "INSTALL", context.packageName, label, url, "2", "0", "20", "", "", "", md5).joinToString(">>"))
+            var accepted = false
+            var lastBeat = System.currentTimeMillis()
+            val deadline = System.currentTimeMillis() + 5 * 60_000L
+            while (System.currentTimeMillis() < deadline) {
+                val msg = try {
+                    val n = input.readInt(); ByteArray(n).also { input.readFully(it) }.decodeToString()
+                } catch (e: java.net.SocketTimeoutException) { null }
+                val parts = msg?.split(">>").orEmpty()
+                if (parts.size >= 5 && parts[0] == "223" && parts[2] == context.packageName) {
+                    when {
+                        parts[1] == "INSTALL" && parts[4] == "denied" -> return false
+                        parts[1] == "INSTALL" -> accepted = true
+                        parts[1] == "PROGRESS" && parts[4] == "2" -> return false
+                        parts[1] == "PROGRESS" && parts[4] == "5" -> return true
+                    }
+                    Log.i(TAG, "多屏互动: $msg")
+                }
+                if (System.currentTimeMillis() - lastBeat > 5000) { send("150>>"); lastBeat = System.currentTimeMillis() }
+            }
+            return accepted
+        }
+    }
+
+    private fun setConfirming(context: Context) {
+        confirmSelfUntil = System.currentTimeMillis() + 5 * 60_000L
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putLong("confirm_until", confirmSelfUntil) }
     }
 
     private fun download(url: String, context: Context): java.io.File {
@@ -204,8 +276,7 @@ object Updates {
             )
             return
         }
-        confirmSelfUntil = System.currentTimeMillis() + 5 * 60_000L
-        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit { putLong("confirm_until", confirmSelfUntil) }
+        setConfirming(context)
         val uri = androidx.core.content.FileProvider.getUriForFile(context, "${context.packageName}.files", apk)
         context.startActivity(
             android.content.Intent(android.content.Intent.ACTION_VIEW)

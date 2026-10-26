@@ -260,6 +260,12 @@ class HomeGuardService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent) {
+        // 多屏互动's Agree prompt is a floating window: it shows up as a windows change.
+        if ((event.packageName == TCAST || event.eventType == AccessibilityEvent.TYPE_WINDOWS_CHANGED) &&
+            System.currentTimeMillis() < app.orchard.tv.update.Updates.confirmUntil(this)
+        ) {
+            listOf(0L, 700L, 1600L).forEach { confirmHandler.postDelayed({ agreeToOwnPush() }, it) }
+        }
         if (event.eventType != AccessibilityEvent.TYPE_WINDOW_STATE_CHANGED) return
         val pkg = event.packageName?.toString() ?: return
         if (pkg == INSTALLER && System.currentTimeMillis() < app.orchard.tv.update.Updates.confirmUntil(this)) {
@@ -293,6 +299,19 @@ class HomeGuardService : AccessibilityService() {
      * Center a moment ago (Updates.confirmSelfUntil), and only when the screen names Lumen.
      */
     private val confirmHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    /** Presses Agree on 多屏互动's push prompt, only while Lumen's own push is under way. */
+    private fun agreeToOwnPush() {
+        if (System.currentTimeMillis() >= app.orchard.tv.update.Updates.confirmUntil(this)) return
+        val roots = windows.mapNotNull { it.root } + listOfNotNull(rootInActiveWindow)
+        val agree = roots.asSequence()
+            .flatMap { it.findAccessibilityNodeInfosByViewId("$TCAST:id/btn_positive").orEmpty().asSequence() }
+            .firstOrNull { it.isEnabled } ?: return
+        if (agree.performAction(android.view.accessibility.AccessibilityNodeInfo.ACTION_CLICK)) {
+            Log.i(TAG, "pressed Agree on 多屏互动 for Lumen's own update")
+            app.orchard.tv.update.Updates.stopConfirming(this)
+        }
+    }
 
     private fun confirmOwnUpdate() {
         if (System.currentTimeMillis() >= app.orchard.tv.update.Updates.confirmUntil(this)) return
@@ -392,6 +411,7 @@ class HomeGuardService : AccessibilityService() {
 
     companion object {
         private const val INSTALLER = "com.android.packageinstaller"
+        private const val TCAST = "com.tcl.MultiScreenInteraction_TV"
         private val CONFIRM_WORDS = listOf("立即更新", "更新", "安装", "Update", "Install")
         private val DONE_HINTS = listOf("安装已完成", "已安装", "App installed", "installed")
         private val DONE_WORDS = listOf("暂不体验", "完成", "Done")

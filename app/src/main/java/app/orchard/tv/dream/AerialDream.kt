@@ -80,6 +80,7 @@ class AerialDream : DreamService(), LifecycleOwner, SavedStateRegistryOwner {
     override fun onDreamingStarted() {
         super.onDreamingStarted()
         active = this
+        app.orchard.tv.update.Updates.installWhenIdle(this)
         registry.currentState = Lifecycle.State.RESUMED
     }
 

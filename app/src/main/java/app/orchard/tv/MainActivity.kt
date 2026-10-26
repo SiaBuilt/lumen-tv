@@ -214,6 +214,8 @@ class MainActivity : ComponentActivity() {
     private val idleHandler = Handler(Looper.getMainLooper())
     private val showScreensaver = Runnable {
         vm.screensaverVisible = true
+        // Nobody is watching: a good moment for an update, which needs no one.
+        app.orchard.tv.update.Updates.installWhenIdle(this)
         // Holding the screen on keeps the firmware's screensaver from starting over ours. After a
         // long stretch, let go so the TV's own power policy can still turn the panel off.
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)

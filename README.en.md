@@ -100,7 +100,7 @@ To install your own build: `BUILD=1 TV=192.168.1.12 tools/install.sh guard` (nee
 
 ### Updating
 
-Lumen checks for a new version every few hours, and whenever Control Center opens. When there is one, Home says so once and Control Center shows "Update to Lumen x":
+Lumen checks for a new version every few hours. When there is one, it installs it in the background once the TV is idle (as the screensaver starts), through TCL's 多屏互动, with Home Guard agreeing for you and no installer screens. Or choose "Update to Lumen x" in Control Center to update now:
 
 1. Select it; Lumen downloads the new version (with progress).
 2. When the system installer opens, Lumen Home Guard presses Update for you (TCL's installer shows no focus on its button; pressing OK works too).
