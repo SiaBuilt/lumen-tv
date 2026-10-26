@@ -129,6 +129,12 @@ Lumen never uninstalls or disables TCL's system apps; after a restore the TV is 
 - When a video is opened from Bilibili's own History page, Bilibili sometimes does not write it to TCL's watch history (or writes another video), so Continue Watching does not update. Opened from Lumen's Resume, it works.
 - Continue Watching for Youku and Mango TV is not verified.
 
+## Other makers
+
+- **Install and Home takeover**: inherited from Aerial; tested on Xiaomi and TCL, with specific handling for Hisense, Coocaa and LeTV (see [docs/devices](docs/devices)). Non-TCL TVs usually install with `tools/install.sh` (without guard).
+- **App row**: the five services ship under different packages per maker; the builds common on Xiaomi and others (云视听极光, 银河奇异果, 芒果 TV) are docked first too.
+- **Continue watching**: built on the watch history of TCL's own launcher, so TCL only for now. Other makers keep no history an ordinary app can read; Home shows the wallpaper there.
+
 ## Tested TVs
 
 | Model | System | Install | Home takeover | Start at boot | Wake from standby | Continue watching |

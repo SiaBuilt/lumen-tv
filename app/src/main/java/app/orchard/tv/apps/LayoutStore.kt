@@ -65,6 +65,10 @@ private object Defaults {
         "com.tcl.qiyiguo",                 // 爱奇艺
         "com.cibn.tv",                     // 优酷 / CIBN 酷喵
         "com.hunantv.market",              // 芒果 TV
+        // The same services on Xiaomi and most other makers, in the same order.
+        "com.ktcp.video",                  // 云视听极光
+        "com.gitvdemo.video",              // 银河奇异果
+        "com.hunantv.license",             // 芒果 TV
         "com.ktcp.video",                  // 云视听极光
         "com.gitvdemo.video",              // 银河奇异果
         "com.cibn.tv",                     // CIBN 酷喵

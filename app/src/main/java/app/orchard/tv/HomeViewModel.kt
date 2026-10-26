@@ -43,8 +43,17 @@ sealed interface Overlay {
     data class Pin(val mode: PinMode, val onDone: () -> Unit) : Overlay
 }
 
-/** The streaming apps Lumen is made for, docked even when they came with the TV (TCL 65V8L). */
-val DOCK_APPS = setOf("com.xiaodianshi.tv.yst", "com.ktcp.csvideo", "com.tcl.qiyiguo", "com.cibn.tv", "com.hunantv.market")
+/**
+ * The streaming apps Lumen is made for, docked even when they came with the TV. Each service ships
+ * under a different package per maker: TCL 65V8L first, then the builds on Xiaomi and most others.
+ */
+val DOCK_APPS = setOf(
+    "com.xiaodianshi.tv.yst",                                  // 哔哩哔哩（云视听小电视）
+    "com.ktcp.csvideo", "com.ktcp.video",                      // 腾讯视频（云视听极光）
+    "com.tcl.qiyiguo", "com.gitvdemo.video",                   // 爱奇艺（奇异果 / 银河奇异果）
+    "com.cibn.tv",                                             // 优酷（CIBN 酷喵）
+    "com.hunantv.market", "com.hunantv.license",               // 芒果 TV
+)
 
 /** Covers are decoded at 720p: sharp enough under the shade, small enough for a 2 GB TV. */
 const val COVER_W = 1280
