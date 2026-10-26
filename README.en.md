@@ -24,7 +24,7 @@ No ads, no recommendation feed. Tested feature by feature on a China-market TCL 
 - **Portrait posters**: for services that only give a portrait poster (Tencent Video), the poster fills the right half and fades into the background.
 
 <p align="center">
-  <img src="docs/screenshots/portrait.jpg" width="49%" alt="Portrait poster across the right half">
+  <img src="docs/screenshots/continue.jpg" width="49%" alt="Continue watching: the latest video fills Home">
   <img src="docs/screenshots/all-apps.jpg" width="49%" alt="All Apps">
 </p>
 

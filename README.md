@@ -24,7 +24,7 @@
 - **竖版海报**：只给竖版海报的平台（比如腾讯视频），海报铺满右半屏，渐隐进背景。
 
 <p align="center">
-  <img src="docs/screenshots/portrait.jpg" width="49%" alt="竖版海报铺满右半屏">
+  <img src="docs/screenshots/continue.jpg" width="49%" alt="继续播放：最近在看的视频铺满首页">
   <img src="docs/screenshots/all-apps.jpg" width="49%" alt="全部应用">
 </p>
 
