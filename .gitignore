@@ -16,3 +16,7 @@ site/install.sh
 
 # Wrangler state and the account cache (account id, e-mail).
 .wrangler/
+
+# Design notes and work logs kept beside the code, not published
+TCL桌面素材/
+/portrait.jpg
