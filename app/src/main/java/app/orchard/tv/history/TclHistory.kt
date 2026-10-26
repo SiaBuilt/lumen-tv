@@ -119,7 +119,14 @@ object TclHistory {
      * Covers at the size a TV needs. Tencent records its poster at thumbnail size (".../vcover_vt_pic/0/<id>/260", 260×364);
      * the same path ending in /0 is the original (1280×1796). Checked 2026-10-22.
      */
-    private fun fullSize(url: String): String = when {
+    private fun fullSize(raw: String): String {
+        // Youku (com.cibn.tv) records covers over plain http, which Android refuses; the same host
+        // serves them over https (m.cp12.ott.cibntv.net, checked 2026-10-26).
+        val url = if (raw.startsWith("http://")) "https://" + raw.removePrefix("http://") else raw
+        return sized(url)
+    }
+
+    private fun sized(url: String): String = when {
         "qpic.cn/vcover_" in url -> url.replace(Regex("/\\d+$"), "/0")
         // iQIYI's image server cuts the title's own key art to the size asked for in the name
         // ("..._m1_352_488.jpg" is the poster; "_1280_720" is landscape art). Checked 2026-10-22.
