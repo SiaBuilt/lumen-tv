@@ -118,6 +118,15 @@ TV=192.168.1.12 tools/restore.sh --uninstall  # 并卸载 Lumen
 
 Lumen 不会卸载、停用任何 TCL 系统应用，还原后电视和原来一样。
 
+### 可选：减少开机广告
+
+TCL 的开机广告由系统组件「开机广告服务」下载，开机动画播放。停用它之后不会再下载新广告，已经缓存的那条过期后就不再播放（缓存文件需要 root 才能删除，所以不会立刻消失）：
+
+```bash
+adb -s 192.168.1.12:5555 shell pm disable-user --user 0 com.tcl.bootadservice   # 停用
+adb -s 192.168.1.12:5555 shell pm enable com.tcl.bootadservice                  # 恢复
+```
+
 ### 遇到问题
 
 - **按 Home 回到了 TCL 桌面**：`TV=192.168.1.12 tools/install.sh repair`，会重新拉起桌面守护。

@@ -118,6 +118,15 @@ TV=192.168.1.12 tools/restore.sh --uninstall  # and remove Lumen
 
 Lumen never uninstalls or disables TCL's system apps; after a restore the TV is as it was.
 
+### Optional: fewer boot ads
+
+TCL's boot ad is downloaded by a system component (com.tcl.bootadservice) and played by the boot animation. Disabled, it fetches no new ads, and the cached one stops once it expires (deleting it needs root, so it does not vanish at once):
+
+```bash
+adb -s 192.168.1.12:5555 shell pm disable-user --user 0 com.tcl.bootadservice   # disable
+adb -s 192.168.1.12:5555 shell pm enable com.tcl.bootadservice                  # restore
+```
+
 ### Troubleshooting
 
 - **Home goes to TCL's launcher**: `TV=192.168.1.12 tools/install.sh repair` restarts Home Guard.
