@@ -56,8 +56,8 @@ Lumen reads **the watch history TCL's own launcher keeps** (the history database
 | Bilibili (云视听小电视) | `com.xiaodianshi.tv.yst` | ✅ tested | ✅ tested | landscape |
 | Tencent Video (云视听极光) | `com.ktcp.csvideo` | ✅ tested | ✅ tested | portrait only |
 | iQIYI (奇异果 TV) | `com.tcl.qiyiguo` | ✅ tested | ✅ tested | landscape |
-| Youku (CIBN 酷喵) | `com.cibn.tv` | not verified | not verified | — |
-| Mango TV | `com.hunantv.market` | not verified | not verified | — |
+| Youku (CIBN 酷喵) | `com.cibn.tv` | ✅ tested | ✅ tested | portrait only |
+| Mango TV | `com.hunantv.market` | ✅ tested | ✅ tested | landscape |
 
 With no history, Home shows the wallpaper and the app row.
 
@@ -136,7 +136,6 @@ adb -s 192.168.1.12:5555 shell pm enable com.tcl.bootadservice                  
 ## Known limitations
 
 - When a video is opened from Bilibili's own History page, Bilibili sometimes does not write it to TCL's watch history (or writes another video), so Continue Watching does not update. Opened from Lumen's Resume, it works.
-- Continue Watching for Youku and Mango TV is not verified.
 
 ## Other makers
 
@@ -148,7 +147,7 @@ adb -s 192.168.1.12:5555 shell pm enable com.tcl.bootadservice                  
 
 | Model | System | Install | Home takeover | Start at boot | Wake from standby | Continue watching |
 |---|---|---|---|---|---|---|
-| TCL 65V8L (China, tc8000_ay30a2) | Android 11 | ✅ 多屏互动 | ✅ | ✅ | not tested | ✅ Bilibili / Tencent / iQIYI |
+| TCL 65V8L (China, tc8000_ay30a2) | Android 11 | ✅ 多屏互动 | ✅ | ✅ | not tested | ✅ Bilibili / Tencent / iQIYI / Youku / Mango |
 
 Other China-market TCL models should work the same way (same install and takeover); reports welcome.
 

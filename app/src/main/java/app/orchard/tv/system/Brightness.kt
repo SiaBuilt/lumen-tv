@@ -12,7 +12,7 @@ import androidx.core.content.ContextCompat
  *
  * - Xiaomi (MediaTek, China firmware): Settings.Global "picture_backlight", 0–100, applied by the
  *   firmware's TV menu service as soon as it changes. Writing it needs WRITE_SECURE_SETTINGS.
- * - TCL: its own TV service only; Control Center opens TCL's picture panel.
+ * - TCL 65V8L: the standard screen brightness drives the backlight (TCL MT5879 ignored it).
  * - Sony BRAVIA: the screen brightness setting changes but the backlight does not (no backlight in
  *   the display config); Control Center opens Sony's picture settings, which DISPLAY_SETTINGS
  *   resolves to. Reported on a BRAVIA VH1, Android 12 (GitHub issue #2).
@@ -28,9 +28,6 @@ object Brightness {
 
     private fun usesXiaomiBacklight(context: Context) =
         Settings.Global.getString(context.contentResolver, XIAOMI_BACKLIGHT) != null
-
-    private fun isTcl(context: Context) =
-        runCatching { context.packageManager.getPackageInfo("com.tcl.settings", 0) }.isSuccess
 
     private fun isXiaomi(context: Context) =
         runCatching { context.packageManager.getPackageInfo("com.xiaomi.mitv.settings", 0) }.isSuccess
