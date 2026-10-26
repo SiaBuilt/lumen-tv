@@ -40,7 +40,7 @@ No ads, no recommendation feed. Tested feature by feature on a China-market TCL 
 - Top left: time and weather; the city follows the TV's system language. It is found from the network by default; in China IP location often lands on the provincial capital or a neighbouring city, so pick yours under Control Center → Weather city.
 - Top right: network and settings. Select it for Control Center: inputs, network, system settings, volume, brightness.
 
-<p align="center"><img src="docs/screenshots/control-center.jpg" width="60%" alt="Control Center"></p>
+![Control Center: inputs, network, settings, volume and brightness sliders, weather city](docs/screenshots/control-center.jpg)
 
 ### Screensaver
 

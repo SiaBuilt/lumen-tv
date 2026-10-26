@@ -40,7 +40,7 @@
 - 左上：时间和天气，城市名跟随电视的系统语言。默认按网络位置自动定位；国内按 IP 定位常会偏到省会或相邻城市，可以在「控制中心 → 天气城市」里手动选。
 - 右上：网络和设置。选中后打开控制中心：信号源、网络、系统设置、音量、亮度。
 
-<p align="center"><img src="docs/screenshots/control-center.jpg" width="60%" alt="控制中心"></p>
+![控制中心：信号源、网络、设置、音量和亮度滑块、天气城市](docs/screenshots/control-center.jpg)
 
 ### 屏保
 

@@ -95,11 +95,13 @@ object TclHistory {
 
     /**
      * iQIYI (com.tcl.qiyiguo) writes the position in milliseconds but the duration in seconds
-     * ("currentPosition=211000, duration=421"). A duration shorter than the position, that fits
-     * once read as seconds, is taken as seconds.
+     * ("currentPosition=211000, duration=421"). A duration far shorter than the position, that
+     * fits once read as seconds, is taken as seconds.
      */
     private fun durationMs(position: Int, duration: Int): Int =
-        if (duration in 1 until position && duration * 1000L >= position) duration * 1000 else duration
+        // Far shorter, not just shorter: Bilibili can record a finished video 1 ms past its end
+        // ("currentPosition=746616, duration=746615"), which is milliseconds all the same.
+        if (duration in 1 until position && duration * 100L < position && duration * 1000L >= position) duration * 1000 else duration
 
     /**
      * Titles as the apps wrote them, made fit for a TV: emoji and pictographs go (the TV's fonts
