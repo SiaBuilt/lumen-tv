@@ -5,13 +5,24 @@
 **An Apple TV–style home screen for China-market TVs.**
 
 Turn on the TV and the episode you didn't finish is right there: a full-screen cover, one Resume button, and a row of your apps below.<br>
-No ads, no recommendation feed. Tested feature by feature on a China-market TCL TV.
+The launcher adds no ads or recommendation feed, keeping your apps and unfinished episodes at the center.
 
 [中文](README.md) · **English**
 
 ![Lumen Home](docs/screenshots/home.jpg)
 
 </div>
+
+## At a glance
+
+| What you want to do | What Lumen provides |
+| --- | --- |
+| Pick up where you left off | Full-screen artwork, progress and one-press resume |
+| Open a favorite app | Remote-friendly focus navigation and a reorderable app row |
+| Adjust the TV | A control center for network, inputs, volume and weather |
+| Enjoy the idle screen | Aerial screensavers and a minimal home layout |
+
+The screenshots below were captured on a TV. Continue watching depends on system viewing-history access and is currently verified on China-market TCL models; see compatibility details below for other brands. Lumen is based on Aerial (MIT), credited at the end of this document.
 
 ## Features
 
